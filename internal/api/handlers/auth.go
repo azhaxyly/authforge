@@ -22,6 +22,7 @@ func NewAuthHandler(authService services.AuthService) *AuthHandler {
 type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Role     string `json:"role"`
 }
 
 type ResponseMessage struct {
@@ -44,6 +45,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user := &models.User{
 		Email: req.Email,
+		Role:  req.Role,
 	}
 
 	if err := h.AuthService.RegisterUser(user, req.Password); err != nil {
@@ -89,7 +91,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	resp := LoginResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	}
+
 	logger.Info("User logged in successfully: ", req.Email)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tokens)
+	json.NewEncoder(w).Encode(resp)
 }

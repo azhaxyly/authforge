@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -22,6 +23,7 @@ type AuthService interface {
 	ConfirmAccount(tokenString string) error
 	RequestPasswordReset(email string) error
 	ResetPassword(token, newPassword string) error
+	ValidateToken(tokenString string) (*models.CustomClaims, error)
 }
 
 type authService struct {
@@ -68,8 +70,13 @@ func (s *authService) RegisterUser(user *models.User, password string) error {
 		logger.Error("Error hashing password for ", user.Email, ": ", err)
 		return err
 	}
+
 	user.PasswordHash = string(hashedPassword)
 	user.IsActive = false
+
+	if user.Role == "" {
+		user.Role = "user"
+	}
 
 	if err := s.userRepo.CreateUser(user); err != nil {
 		logger.Error("Error creating user ", user.Email, ": ", err)
@@ -141,19 +148,18 @@ func (s *authService) Login(email, password string) (*TokenPair, error) {
 }
 
 func (s *authService) generateJWTToken(user *models.User, expiry time.Duration) (string, error) {
-	claims := jwt.MapClaims{
-		"sub":   user.ID,
-		"email": user.Email,
-		"iat":   time.Now().Unix(),
-		"exp":   time.Now().Add(expiry).Unix(),
+	claims := &models.CustomClaims{
+		UserID: user.ID,
+		Role:   user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   fmt.Sprintf("%d", user.ID),
+		},
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(s.cfg.JWTSecret))
-	if err != nil {
-		logger.Error("Error signing JWT token for user ", user.Email, ": ", err)
-		return "", err
-	}
-	return signedToken, nil
+	return token.SignedString([]byte(s.cfg.JWTSecret))
 }
 
 func generateRandomToken(n int) (string, error) {
@@ -194,7 +200,7 @@ func (s *authService) ConfirmAccount(tokenString string) error {
 		logger.Error("Error deleting confirmation token: ", err)
 	}
 
-	logger.Info("Account confirmed successfully for ", user.Email)
+	logger.Info("Account confirmed successfully for ", user.Email, " with role ", user.Role)
 	return nil
 }
 
@@ -276,4 +282,27 @@ func (s *authService) ResetPassword(tokenStr, newPassword string) error {
 
 	logger.Info("Password reset successfully for user ", user.Email)
 	return nil
+}
+
+func (s *authService) ValidateToken(tokenString string) (*models.CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &models.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(s.cfg.JWTSecret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*models.CustomClaims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	if claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
+		return nil, errors.New("token expired")
+	}
+
+	return claims, nil
 }

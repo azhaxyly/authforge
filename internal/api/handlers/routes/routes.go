@@ -16,4 +16,5 @@ func RegisterRoutes(
 	http.HandleFunc("/api/v1/auth/confirm", confirmHandler.ConfirmAccount)
 	http.HandleFunc("/api/v1/auth/password-reset-request", passwordResetHandler.RequestPasswordReset)
 	http.HandleFunc("/api/v1/auth/password-reset-confirm", passwordResetHandler.ResetPassword)
+	http.HandleFunc("/api/v1/auth/validate", authHandler.ValidateToken)
 }

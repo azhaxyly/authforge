@@ -26,8 +26,13 @@ func NewUserRepository(db *sql.DB) UserRepository {
 
 func (r *PostgresUserRepository) CreateUser(user *models.User) error {
 	query := `
-		INSERT INTO users (email, password_hash, is_active, created_at, updated_at, failed_login_attempts, last_failed_login)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+		INSERT INTO users (
+			email, password_hash, is_active, role,
+			created_at, updated_at, failed_login_attempts, last_failed_login
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id`
+
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now
@@ -36,6 +41,7 @@ func (r *PostgresUserRepository) CreateUser(user *models.User) error {
 		user.Email,
 		user.PasswordHash,
 		user.IsActive,
+		user.Role,
 		user.CreatedAt,
 		user.UpdatedAt,
 		user.FailedLoginAttempts,
@@ -45,7 +51,7 @@ func (r *PostgresUserRepository) CreateUser(user *models.User) error {
 	if err != nil {
 		logger.Error("Error creating user with email ", user.Email, ": ", err)
 	} else {
-		logger.Info("User created with ID ", user.ID, " and email ", user.Email)
+		logger.Info("User created with ID ", user.ID, " and email ", user.Email, " and role ", user.Role)
 	}
 
 	return err
@@ -53,7 +59,7 @@ func (r *PostgresUserRepository) CreateUser(user *models.User) error {
 
 func (r *PostgresUserRepository) GetUserByEmail(email string) (*models.User, error) {
 	query := `
-		SELECT id, email, password_hash, is_active, created_at, updated_at, failed_login_attempts, last_failed_login
+		SELECT id, email, password_hash, is_active, role, created_at, updated_at, failed_login_attempts, last_failed_login
 		FROM users WHERE email = $1`
 	user := &models.User{}
 	err := r.DB.QueryRow(query, email).Scan(
@@ -61,6 +67,7 @@ func (r *PostgresUserRepository) GetUserByEmail(email string) (*models.User, err
 		&user.Email,
 		&user.PasswordHash,
 		&user.IsActive,
+		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.FailedLoginAttempts,
@@ -75,13 +82,13 @@ func (r *PostgresUserRepository) GetUserByEmail(email string) (*models.User, err
 		return nil, err
 	}
 
-	logger.Info("User retrieved with email ", email, " and ID ", user.ID)
+	logger.Info("User retrieved with email ", email, " and role ", user.Role)
 	return user, nil
 }
 
 func (r *PostgresUserRepository) GetUserByID(id int64) (*models.User, error) {
 	query := `
-		SELECT id, email, password_hash, is_active, created_at, updated_at, failed_login_attempts, last_failed_login
+		SELECT id, email, password_hash, is_active, role, created_at, updated_at, failed_login_attempts, last_failed_login
 		FROM users WHERE id = $1`
 	user := &models.User{}
 	err := r.DB.QueryRow(query, id).Scan(
@@ -89,6 +96,7 @@ func (r *PostgresUserRepository) GetUserByID(id int64) (*models.User, error) {
 		&user.Email,
 		&user.PasswordHash,
 		&user.IsActive,
+		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.FailedLoginAttempts,
@@ -103,21 +111,30 @@ func (r *PostgresUserRepository) GetUserByID(id int64) (*models.User, error) {
 		return nil, err
 	}
 
-	logger.Info("User retrieved with ID ", id, " and email ", user.Email)
+	logger.Info("User retrieved with ID ", id, " and role ", user.Role)
 	return user, nil
 }
 
 func (r *PostgresUserRepository) UpdateUser(user *models.User) error {
 	query := `
 		UPDATE users 
-		SET email = $1, password_hash = $2, is_active = $3, updated_at = $4, failed_login_attempts = $5, last_failed_login = $6
-		WHERE id = $7`
+		SET email = $1, password_hash = $2, is_active = $3, role = $4, updated_at = $5, failed_login_attempts = $6, last_failed_login = $7
+		WHERE id = $8`
 	user.UpdatedAt = time.Now()
-	_, err := r.DB.Exec(query, user.Email, user.PasswordHash, user.IsActive, user.UpdatedAt, user.FailedLoginAttempts, user.LastFailedLogin, user.ID)
+	_, err := r.DB.Exec(query,
+		user.Email,
+		user.PasswordHash,
+		user.IsActive,
+		user.Role,
+		user.UpdatedAt,
+		user.FailedLoginAttempts,
+		user.LastFailedLogin,
+		user.ID,
+	)
 	if err != nil {
 		logger.Error("Error updating user with ID ", user.ID, ": ", err)
 	} else {
-		logger.Info("User with ID ", user.ID, " updated successfully")
+		logger.Info("User with ID ", user.ID, " updated successfully (role: ", user.Role, ")")
 	}
 	return err
 }
