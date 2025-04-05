@@ -50,10 +50,7 @@ func (r *PostgresUserRepository) CreateUser(user *models.User) error {
 
 	if err != nil {
 		logger.Error("Error creating user with email ", user.Email, ": ", err)
-	} else {
-		logger.Info("User created with ID ", user.ID, " and email ", user.Email, " and role ", user.Role)
 	}
-
 	return err
 }
 
@@ -81,8 +78,6 @@ func (r *PostgresUserRepository) GetUserByEmail(email string) (*models.User, err
 		logger.Error("Error fetching user by email ", email, ": ", err)
 		return nil, err
 	}
-
-	logger.Info("User retrieved with email ", email, " and role ", user.Role)
 	return user, nil
 }
 
@@ -110,8 +105,6 @@ func (r *PostgresUserRepository) GetUserByID(id int64) (*models.User, error) {
 		logger.Error("Error fetching user by ID ", id, ": ", err)
 		return nil, err
 	}
-
-	logger.Info("User retrieved with ID ", id, " and role ", user.Role)
 	return user, nil
 }
 
@@ -133,8 +126,6 @@ func (r *PostgresUserRepository) UpdateUser(user *models.User) error {
 	)
 	if err != nil {
 		logger.Error("Error updating user with ID ", user.ID, ": ", err)
-	} else {
-		logger.Info("User with ID ", user.ID, " updated successfully (role: ", user.Role, ")")
 	}
 	return err
 }

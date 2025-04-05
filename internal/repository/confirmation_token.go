@@ -31,8 +31,6 @@ func (r *PostgresConfirmationTokenRepository) CreateToken(token *models.Confirma
 	_, err := r.DB.Exec(query, token.UserID, token.Token, token.ExpiresAt, token.CreatedAt)
 	if err != nil {
 		logger.Error("Error creating confirmation token: ", err)
-	} else {
-		logger.Info("Confirmation token created for user: ", token.UserID)
 	}
 	return err
 }
@@ -55,7 +53,6 @@ func (r *PostgresConfirmationTokenRepository) GetTokenByString(token string) (*m
 		logger.Error("Error fetching confirmation token: ", err)
 		return nil, err
 	}
-	logger.Info("Confirmation token retrieved for user: ", ct.UserID)
 	return ct, nil
 }
 
@@ -64,8 +61,6 @@ func (r *PostgresConfirmationTokenRepository) DeleteToken(token string) error {
 	_, err := r.DB.Exec(query, token)
 	if err != nil {
 		logger.Error("Error deleting confirmation token: ", err)
-	} else {
-		logger.Info("Confirmation token deleted")
 	}
 	return err
 }

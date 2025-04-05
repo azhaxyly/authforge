@@ -45,7 +45,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user := &models.User{
 		Email: req.Email,
-		Role:  req.Role,
+		Role:  models.UserRole(req.Role),
 	}
 
 	if err := h.AuthService.RegisterUser(user, req.Password); err != nil {

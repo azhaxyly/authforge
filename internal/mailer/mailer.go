@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/smtp"
 
-	"authforge/internal/config"
+	"authforge/config"
 	"authforge/internal/logger"
 )
 

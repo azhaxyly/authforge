@@ -10,7 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 
-	"authforge/internal/config"
+	"authforge/config"
 	"authforge/internal/logger"
 	"authforge/internal/mailer"
 	"authforge/internal/models"
@@ -57,8 +57,6 @@ func NewAuthService(
 }
 
 func (s *authService) RegisterUser(user *models.User, password string) error {
-	logger.Info("Registering user with email ", user.Email)
-
 	existingUser, err := s.userRepo.GetUserByEmail(user.Email)
 	if err == nil && existingUser != nil {
 		logger.Error("User already exists: ", user.Email)
@@ -78,11 +76,15 @@ func (s *authService) RegisterUser(user *models.User, password string) error {
 		user.Role = "user"
 	}
 
+	if user.Role != models.RoleUser && user.Role != models.RoleAdmin {
+		logger.Error("Invalid role specified for user: ", user.Email)
+		return errors.New("invalid role")
+	}
+
 	if err := s.userRepo.CreateUser(user); err != nil {
 		logger.Error("Error creating user ", user.Email, ": ", err)
 		return err
 	}
-	logger.Info("User created with ID ", user.ID)
 
 	confirmationToken, err := generateRandomToken(32)
 	if err != nil {
@@ -105,13 +107,10 @@ func (s *authService) RegisterUser(user *models.User, password string) error {
 		logger.Error("Error sending confirmation email to ", user.Email, ": ", err)
 		return err
 	}
-
-	logger.Info("Registration process completed successfully for ", user.Email)
 	return nil
 }
 
 func (s *authService) Login(email, password string) (*TokenPair, error) {
-	logger.Info("Attempting login for ", email)
 	user, err := s.userRepo.GetUserByEmail(email)
 	if err != nil {
 		logger.Error("Login failed, user not found: ", email)
@@ -139,8 +138,6 @@ func (s *authService) Login(email, password string) (*TokenPair, error) {
 		logger.Error("Error generating refresh token for ", email, ": ", err)
 		return nil, err
 	}
-
-	logger.Info("User ", email, " logged in successfully")
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -150,7 +147,7 @@ func (s *authService) Login(email, password string) (*TokenPair, error) {
 func (s *authService) generateJWTToken(user *models.User, expiry time.Duration) (string, error) {
 	claims := &models.CustomClaims{
 		UserID: user.ID,
-		Role:   user.Role,
+		Role:   string(user.Role),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -172,7 +169,6 @@ func generateRandomToken(n int) (string, error) {
 }
 
 func (s *authService) ConfirmAccount(tokenString string) error {
-	logger.Info("Confirming account with token: ", tokenString)
 	confirmationToken, err := s.tokenRepo.GetTokenByString(tokenString)
 	if err != nil {
 		logger.Error("Invalid confirmation token: ", err)
@@ -200,12 +196,10 @@ func (s *authService) ConfirmAccount(tokenString string) error {
 		logger.Error("Error deleting confirmation token: ", err)
 	}
 
-	logger.Info("Account confirmed successfully for ", user.Email, " with role ", user.Role)
 	return nil
 }
 
 func (s *authService) RequestPasswordReset(email string) error {
-	logger.Info("Password reset requested for email: ", email)
 	user, err := s.userRepo.GetUserByEmail(email)
 	if err != nil {
 		logger.Error("User not found for password reset: ", email)
@@ -235,12 +229,10 @@ func (s *authService) RequestPasswordReset(email string) error {
 		return err
 	}
 
-	logger.Info("Password reset process completed for ", email)
 	return nil
 }
 
 func (s *authService) ResetPassword(tokenStr, newPassword string) error {
-	logger.Info("Resetting password using token: ", tokenStr)
 	tokenModel, err := s.passwordResetTokenRepo.GetToken(tokenStr)
 	if err != nil {
 		logger.Error("Invalid password reset token: ", err)
@@ -280,7 +272,6 @@ func (s *authService) ResetPassword(tokenStr, newPassword string) error {
 		return err
 	}
 
-	logger.Info("Password reset successfully for user ", user.Email)
 	return nil
 }
 

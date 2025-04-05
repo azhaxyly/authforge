@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
+	"authforge/config"
 	"authforge/internal/api/handlers"
 	"authforge/internal/api/handlers/routes"
-	"authforge/internal/config"
 	"authforge/internal/logger"
 	"authforge/internal/mailer"
 	"authforge/internal/repository"
@@ -26,16 +26,6 @@ func Run() {
 	if err != nil {
 		logger.Error("Error connecting to database: ", err)
 		log.Fatalf("Error connecting to database: %v", err)
-	}
-
-	err = repository.DropTables(db)
-	if err != nil {
-		logger.Error("Error dropping tables: ", err)
-	}
-
-	if err := repository.RunMigrations(db); err != nil {
-		logger.Error("Migration error: ", err)
-		log.Fatalf("Migration error: %v", err)
 	}
 
 	userRepo := repository.NewUserRepository(db)

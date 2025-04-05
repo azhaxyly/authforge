@@ -32,8 +32,6 @@ func (r *PostgresPasswordResetTokenRepository) CreateToken(token *models.Passwor
 	_, err := r.DB.Exec(query, token.UserID, token.Token, token.ExpiresAt, token.CreatedAt, token.Used)
 	if err != nil {
 		logger.Error("Error creating password reset token for user ", token.UserID, ": ", err)
-	} else {
-		logger.Info("Password reset token created for user ", token.UserID)
 	}
 	return err
 }
@@ -57,7 +55,6 @@ func (r *PostgresPasswordResetTokenRepository) GetToken(tokenStr string) (*model
 		logger.Error("Error fetching password reset token: ", err)
 		return nil, err
 	}
-	logger.Info("Password reset token retrieved for user ", prt.UserID)
 	return prt, nil
 }
 
@@ -66,8 +63,6 @@ func (r *PostgresPasswordResetTokenRepository) MarkTokenUsed(tokenStr string) er
 	_, err := r.DB.Exec(query, tokenStr)
 	if err != nil {
 		logger.Error("Error marking password reset token as used: ", err)
-	} else {
-		logger.Info("Password reset token marked as used")
 	}
 	return err
 }
