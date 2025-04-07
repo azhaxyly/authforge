@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 )
 
 type UserRole string
@@ -14,7 +15,7 @@ const (
 )
 
 type User struct {
-	ID                  int64     `json:"id" db:"id"`
+	ID                  uuid.UUID `json:"id" db:"id"`
 	Email               string    `json:"email" db:"email"`
 	PasswordHash        string    `json:"-" db:"password_hash"`
 	IsActive            bool      `json:"isActive" db:"is_active"`
@@ -26,7 +27,7 @@ type User struct {
 }
 
 type CustomClaims struct {
-	UserID int64  `json:"user_id"`
+	UserID string `json:"user_id"`
 	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }

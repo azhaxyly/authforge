@@ -7,12 +7,14 @@ import (
 
 	"authforge/internal/logger"
 	"authforge/internal/models"
+
+	"github.com/google/uuid"
 )
 
 type UserRepository interface {
 	CreateUser(user *models.User) error
 	GetUserByEmail(email string) (*models.User, error)
-	GetUserByID(id int64) (*models.User, error)
+	GetUserByID(id uuid.UUID) (*models.User, error)
 	UpdateUser(user *models.User) error
 }
 
@@ -27,17 +29,18 @@ func NewUserRepository(db *sql.DB) UserRepository {
 func (r *PostgresUserRepository) CreateUser(user *models.User) error {
 	query := `
 		INSERT INTO users (
-			email, password_hash, is_active, role,
+			id, email, password_hash, is_active, role,
 			created_at, updated_at, failed_login_attempts, last_failed_login
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	now := time.Now()
+	user.ID = uuid.New() // ✅ явно создаём UUID
 	user.CreatedAt = now
 	user.UpdatedAt = now
 
-	err := r.DB.QueryRow(query,
+	_, err := r.DB.Exec(query,
+		user.ID,
 		user.Email,
 		user.PasswordHash,
 		user.IsActive,
@@ -46,7 +49,7 @@ func (r *PostgresUserRepository) CreateUser(user *models.User) error {
 		user.UpdatedAt,
 		user.FailedLoginAttempts,
 		user.LastFailedLogin,
-	).Scan(&user.ID)
+	)
 
 	if err != nil {
 		logger.Error("Error creating user with email ", user.Email, ": ", err)
@@ -81,7 +84,7 @@ func (r *PostgresUserRepository) GetUserByEmail(email string) (*models.User, err
 	return user, nil
 }
 
-func (r *PostgresUserRepository) GetUserByID(id int64) (*models.User, error) {
+func (r *PostgresUserRepository) GetUserByID(id uuid.UUID) (*models.User, error) {
 	query := `
 		SELECT id, email, password_hash, is_active, role, created_at, updated_at, failed_login_attempts, last_failed_login
 		FROM users WHERE id = $1`

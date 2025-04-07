@@ -4,10 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"authforge/config"
@@ -81,6 +81,8 @@ func (s *authService) RegisterUser(user *models.User, password string) error {
 		return errors.New("invalid role")
 	}
 
+	user.ID = uuid.New()
+
 	if err := s.userRepo.CreateUser(user); err != nil {
 		logger.Error("Error creating user ", user.Email, ": ", err)
 		return err
@@ -107,6 +109,7 @@ func (s *authService) RegisterUser(user *models.User, password string) error {
 		logger.Error("Error sending confirmation email to ", user.Email, ": ", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -146,12 +149,12 @@ func (s *authService) Login(email, password string) (*TokenPair, error) {
 
 func (s *authService) generateJWTToken(user *models.User, expiry time.Duration) (string, error) {
 	claims := &models.CustomClaims{
-		UserID: user.ID,
+		UserID: user.ID.String(),
 		Role:   string(user.Role),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Subject:   fmt.Sprintf("%d", user.ID),
+			Subject:   user.ID.String(),
 		},
 	}
 
